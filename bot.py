@@ -53,31 +53,27 @@ def get_nodes(start_time: datetime) -> Box:
 
 
 def format_tweet_for_node(node):
-
     if "Bacteria" in node.lineage:
         emoji = "🦠"
+    elif "Fungi" in node.lineage:
+        emoji = "🍄"
     else:
         emoji = ""
 
     return "\n".join([f"{node.name} ({node.rank}) {emoji}".strip(), f"lineage: {node.lineage}"])
 
 
-start_time = datetime(2020, 2, 17, 0, 0, 0)
-nodes = get_nodes(start_time=start_time)
+def main():
+    start_time = datetime(2020, 2, 17, 0, 0, 0)
+    nodes = get_nodes(start_time=start_time)
 
-new_nodes = [n for n in nodes if (n.created_at >= start_time) or (n.published_at >= start_time)]
-new_nodes = nodes
+    new_nodes = [n for n in nodes if (n.created_at >= start_time) or (n.published_at >= start_time)]
+    new_nodes = nodes
 
-for node in new_nodes:
-    print(format_tweet_for_node(node))
-    print()
+    for node in new_nodes:
+        print(format_tweet_for_node(node))
+        print()
 
-# every so often
-# find a list of new taxa
-# if the taxa was created at > the last time we checked
-# tweet about
-# otherwise, do nothing
-# either way, note the latest taxon we saw so that we don't
-# tweet again (probably just save this to a file)
 
-# add emojis based on the kingdom / phylum?
+if __name__ == "__main__":
+    main()
