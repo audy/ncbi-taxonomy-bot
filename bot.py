@@ -4,15 +4,17 @@ from Bio import Entrez
 import xmltodict
 from box import Box
 from datetime import datetime
+from dateutil.parser import parse as parse_date
+from pprint import pprint
 
 
-def get_nodes() -> Box:
+def get_nodes(start_time: datetime) -> Box:
     """
     Returns a list of nodes that have been created/updated/published after a
     specified date
     """
 
-    start_time = datetime.now().strftime("%Y/%m/%d")
+    start_time = start_time.strftime("%Y/%m/%d")
 
     # I haven't been able to figure out how to query by hour so we have to
     # parse the times and filter manually. No biggie.
@@ -22,7 +24,8 @@ def get_nodes() -> Box:
         xmltodict.parse(Entrez.esearch("taxonomy", term, email="austin@onecodex.com").read())
     )
 
-    tax_ids = node_list.eSearchResult.IdList.Id[:2]
+    # TODO: return an empty list if there are no nodes
+    tax_ids = node_list.eSearchResult.IdList.Id
 
     nodes = Box(
         xmltodict.parse(
@@ -30,11 +33,32 @@ def get_nodes() -> Box:
         )
     )
 
-    return nodes.TaxaSet.Taxon
+    # we should probably munge the dat a bit here and return something
+    # more defined
+
+    return [
+        {
+            "id": node.TaxId,
+            "name": node.ScientificName,
+            "rank": node.Rank,
+            "created_at": parse_date(node.CreateDate),
+            "updated_at": parse_date(node.UpdateDate),
+            "published_at": parse_date(node.PubDate),
+            "lineage": node.Lineage,
+        }
+        for node in nodes.TaxaSet.Taxon
+    ]
 
 
-nodes = get_nodes()
+nodes = get_nodes(start_time=datetime.now())
 
 for node in nodes:
-    print(node.ScientificName)
-    print([node.CreateDate, node.UpdateDate, node.PubDate])
+    pprint(node)
+
+# every so often
+# find a list of new taxa
+# if the taxa was created at > the last time we checked
+# tweet about
+# otherwise, do nothing
+# either way, note the latest taxon we saw so that we don't
+# tweet again (probably just save this to a file)
