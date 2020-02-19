@@ -37,23 +37,40 @@ def get_nodes(start_time: datetime) -> Box:
     # more defined
 
     return [
-        {
-            "id": node.TaxId,
-            "name": node.ScientificName,
-            "rank": node.Rank,
-            "created_at": parse_date(node.CreateDate),
-            "updated_at": parse_date(node.UpdateDate),
-            "published_at": parse_date(node.PubDate),
-            "lineage": node.Lineage,
-        }
+        Box(
+            {
+                "id": node.TaxId,
+                "name": node.ScientificName,
+                "rank": node.Rank,
+                "created_at": parse_date(node.CreateDate),
+                "updated_at": parse_date(node.UpdateDate),
+                "published_at": parse_date(node.PubDate),
+                "lineage": node.Lineage,
+            }
+        )
         for node in nodes.TaxaSet.Taxon
     ]
 
 
-nodes = get_nodes(start_time=datetime.now())
+def format_tweet_for_node(node):
 
-for node in nodes:
-    pprint(node)
+    if "Bacteria" in node.lineage:
+        emoji = "🦠"
+    else:
+        emoji = ""
+
+    return "\n".join([f"{node.name} ({node.rank}) {emoji}".strip(), f"lineage: {node.lineage}"])
+
+
+start_time = datetime(2020, 2, 17, 0, 0, 0)
+nodes = get_nodes(start_time=start_time)
+
+new_nodes = [n for n in nodes if (n.created_at >= start_time) or (n.published_at >= start_time)]
+new_nodes = nodes
+
+for node in new_nodes:
+    print(format_tweet_for_node(node))
+    print()
 
 # every so often
 # find a list of new taxa
@@ -62,3 +79,5 @@ for node in nodes:
 # otherwise, do nothing
 # either way, note the latest taxon we saw so that we don't
 # tweet again (probably just save this to a file)
+
+# add emojis based on the kingdom / phylum?
