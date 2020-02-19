@@ -6,9 +6,10 @@ from box import Box
 from datetime import datetime
 from dateutil.parser import parse as parse_date
 from pprint import pprint
+from typing import List
 
 
-def get_nodes(start_time: datetime) -> Box:
+def get_nodes(start_time: datetime) -> List[Box]:
     """
     Returns a list of nodes that have been created/updated/published after a
     specified date
@@ -33,9 +34,6 @@ def get_nodes(start_time: datetime) -> Box:
         )
     )
 
-    # we should probably munge the dat a bit here and return something
-    # more defined
-
     return [
         Box(
             {
@@ -52,7 +50,7 @@ def get_nodes(start_time: datetime) -> Box:
     ]
 
 
-def format_tweet_for_node(node):
+def format_tweet_for_node(node) -> str:
     if "Bacteria" in node.lineage:
         emoji = "🦠"
     elif "Fungi" in node.lineage:
