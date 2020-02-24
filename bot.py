@@ -84,7 +84,7 @@ def main():
 
     print(f"got {len(nodes)} new nodes")
 
-    new_nodes = [n for n in nodes if (n.created_at >= start_time) or (n.published_at >= start_time)]
+    new_nodes = [n for n in nodes if (n.created_at >= last_time) or (n.published_at >= last_time)]
     new_nodes = nodes
 
     for node in new_nodes:
