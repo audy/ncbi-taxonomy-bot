@@ -76,7 +76,7 @@ def main():
         last_time = datetime.now()
 
     with open("last-time.json", "w") as handle:
-        json.dump({"last-time": last_time}, handle, default=str)
+        json.dump({"last-time": datetime.now()}, handle, default=str)
 
     print(f"looking up taxa that were created since {last_time}")
 
