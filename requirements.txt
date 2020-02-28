@@ -1,3 +1,4 @@
 BioPython
 python-box
 xmltodict
+python-twitter
