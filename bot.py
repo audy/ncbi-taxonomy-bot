@@ -7,13 +7,17 @@ from dateutil.parser import parse as parse_date
 from pprint import pprint
 from time import sleep
 from typing import List
+from pytz import timezone
 import json
 import os
 import random
 import time
 import twitter
 import xmltodict
+import json
 
+
+TIMEZONE = timezone('EST')
 
 def get_nodes(start_time: datetime) -> List[Box]:
     """
@@ -28,23 +32,29 @@ def get_nodes(start_time: datetime) -> List[Box]:
     term = f'"{start_time}"[EDAT] : "3000"[EDAT]'
 
     node_list = Box(
-        xmltodict.parse(Entrez.esearch("taxonomy", term, email="austin@onecodex.com").read())
+        xmltodict.parse(
+            Entrez.esearch("taxonomy", term, retmax=100, email="austin@onecodex.com").read()
+        )
     )
 
-    pprint(node_list.to_dict())
+    with open('node-list.json', 'w') as handle:
+        json.dump(node_list.to_dict(), handle)
 
     if node_list.eSearchResult.IdList is None:
         return []
     else:
         tax_ids = node_list.eSearchResult.IdList.Id
-
-        nodes = Box(
+        response_data = \
             xmltodict.parse(
                 Entrez.efetch(
                     db="taxonomy", id=",".join(tax_ids), email="austin@onecodex.com"
                 ).read()
             )
-        )
+
+        nodes = Box(response_data)
+
+        with open('nodes.json', 'w') as handle:
+            json.dump(nodes.to_dict(), handle)
 
         return [
             Box(
@@ -52,9 +62,9 @@ def get_nodes(start_time: datetime) -> List[Box]:
                     "id": node.TaxId,
                     "name": node.ScientificName,
                     "rank": node.Rank,
-                    "created_at": parse_date(node.CreateDate),
-                    "updated_at": parse_date(node.UpdateDate),
-                    "published_at": parse_date(node.PubDate),
+                    "created_at": parse_date(node.CreateDate).replace(tzinfo=TIMEZONE),
+                    "updated_at": parse_date(node.UpdateDate).replace(tzinfo=TIMEZONE),
+                    "published_at": parse_date(node.PubDate).replace(tzinfo=TIMEZONE),
                     "lineage": node.Lineage,
                 }
             )
@@ -90,6 +100,8 @@ def format_tweet_for_node(node, last_time) -> str:
         emoji = "🦋"
     elif "Viridiplantae" in node.lineage:
         emoji = "🌱"
+    elif "Mammalia" in node.lineage and "Rodentia" in node.lineage:
+        emoji = "🐁"
     else:
         emoji = None
 
@@ -115,7 +127,16 @@ def send_tweet(tweet_text, dry_run=True):
     if dry_run:
         print(tweet_text)
     else:
-        print(api.PostUpdate(tweet_text))
+        print(f"tweeting!")
+        print(tweet_text)
+        print("\n")
+
+        try:
+            api.PostUpdate(tweet_text)
+        # probably due to tweeting the same thing twice ...
+        except twitter.error.TwitterError as e:
+            print(e)
+            return
 
 
 def tweet_nodes(nodes, last_time, dry_run=True, delay=60 * 15):
@@ -134,12 +155,8 @@ def tweet_nodes(nodes, last_time, dry_run=True, delay=60 * 15):
 
 def main():
 
-    if os.path.exists("last-time.json"):
-        with open("last-time.json") as handle:
-            last_time = parse_date(json.load(handle)["last-time"])
-    else:
-        # how to get in UTC?
-        last_time = datetime.utcnow()
+    with open("last-time.json") as handle:
+        last_time = parse_date(json.load(handle)["last-time"])
 
     # make sure we're logged in before starting anything
     api = get_twitter()
@@ -150,12 +167,23 @@ def main():
     nodes = get_nodes(start_time=last_time)
     print(f"{len(nodes)} nodes fetch from NCBI (since={last_time})")
 
-    new_nodes = [n for n in nodes if (n.created_at >= last_time) or (n.published_at >= last_time)]
+    new_nodes = []
+
+    for node in nodes:
+        if 'sp.' not in node.name:
+
+            if (node.created_at >= last_time) or (node.published_at >= last_time):
+                print(f"[keep] {node.name} created={node.created_at} updated={node.updated_at} published={node.published_at}")
+                new_nodes.append(node)
+            else:
+                pprint([node, last_time, node.created_at >= last_time, node.published_at >= last_time, 'sp.' not in node.name])
+        else:
+            print(f"[skip] {node.name} {node.created_at}/({node.updated_at})")
 
     print(f"got {len(new_nodes)} new nodes created/updated since {last_time}")
 
     with open("last-time.json", "w") as handle:
-        json.dump({"last-time": datetime.utcnow()}, handle, default=str)
+        json.dump({"last-time": datetime.now(TIMEZONE)}, handle, default=str)
 
     # this will rate limit
     # if something goes wrong, it will not duplicate tweets

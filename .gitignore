@@ -1,1 +1,3 @@
-last-time.json
+*
+!requirements.txt
+!bot.py
