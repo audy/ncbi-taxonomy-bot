@@ -43,7 +43,7 @@ def get_nodes(start_time: datetime) -> List[Box]:
 
     node_list = Box(
         xmltodict.parse(
-            Entrez.esearch("taxonomy", term, retmax=100, email="austin@onecodex.com").read()
+            Entrez.esearch("taxonomy", term, retmax=100, email="harekrishna@gmail.com").read()
         )
     )
 
@@ -54,7 +54,7 @@ def get_nodes(start_time: datetime) -> List[Box]:
         response_data = \
             xmltodict.parse(
                 Entrez.efetch(
-                    db="taxonomy", id=",".join(tax_ids), email="austin@onecodex.com"
+                    db="taxonomy", id=",".join(tax_ids), email="harekrishna@gmail.com"
                 ).read()
             )
 
