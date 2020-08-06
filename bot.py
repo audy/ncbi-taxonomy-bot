@@ -19,6 +19,7 @@ import json
 
 TIMEZONE = timezone("EST")
 
+
 def parse_start_time(start_time_string):
     start_time = datetime.fromisoformat(start_time_string)
     assert start_time.tzinfo is not None
@@ -26,10 +27,12 @@ def parse_start_time(start_time_string):
     print(start_time)
     return start_time
 
+
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--start-time', default=None, type=parse_start_time)
+    parser.add_argument("--start-time", default=None, type=parse_start_time)
     return parser.parse_args()
+
 
 def get_nodes(start_time: datetime) -> List[Box]:
     """
@@ -43,7 +46,9 @@ def get_nodes(start_time: datetime) -> List[Box]:
 
     node_list = Box(
         xmltodict.parse(
-            Entrez.esearch("taxonomy", term, retmax=100, email="harekrishna@gmail.com").read()
+            Entrez.esearch(
+                "taxonomy", term, retmax=100, email="harekrishna@gmail.com"
+            ).read()
         )
     )
 
@@ -51,33 +56,38 @@ def get_nodes(start_time: datetime) -> List[Box]:
         return []
     else:
         tax_ids = node_list.eSearchResult.IdList.Id
-        response_data = \
-            xmltodict.parse(
-                Entrez.efetch(
-                    db="taxonomy", id=",".join(tax_ids), email="harekrishna@gmail.com"
-                ).read()
-            )
+        response_data = xmltodict.parse(
+            Entrez.efetch(
+                db="taxonomy", id=",".join(tax_ids), email="harekrishna@gmail.com"
+            ).read()
+        )
 
         nodes = Box(response_data)
         retval = []
 
         for node in nodes.TaxaSet.Taxon:
-            if 'PubDate' in node:
+            if "PubDate" in node:
                 pub_date = parse_date(node.PubDate).replace(tzinfo=TIMEZONE)
             else:
                 # sometimes nodes don't have a PubDate (even though they're public)
                 # so just replace it with now
                 pub_date = datetime.now(TIMEZONE)
             retval.append(
-                Box({
+                Box(
+                    {
                         "id": node.TaxId,
                         "name": node.ScientificName,
                         "rank": node.Rank,
-                        "created_at": parse_date(node.CreateDate).replace(tzinfo=TIMEZONE),
-                        "updated_at": parse_date(node.UpdateDate).replace(tzinfo=TIMEZONE),
+                        "created_at": parse_date(node.CreateDate).replace(
+                            tzinfo=TIMEZONE
+                        ),
+                        "updated_at": parse_date(node.UpdateDate).replace(
+                            tzinfo=TIMEZONE
+                        ),
                         "published_at": pub_date,
                         "lineage": node.Lineage,
-                })
+                    }
+                )
             )
         return retval
 
@@ -176,7 +186,7 @@ def main():
     print(f"start time: {start_time}")
 
     while True:
-        nodes = [ n for n in get_nodes(start_time) if 'sp.' not in n.name ]
+        nodes = [n for n in get_nodes(start_time) if "sp." not in n.name]
 
         for node in nodes:
             print(str(node.created_at))
@@ -191,13 +201,18 @@ def main():
                 times.extend([node.created_at, node.updated_at, node.published_at])
 
             tweetable_nodes = [
-                n for n in nodes
-                if (n.created_at >= start_time) or (n.published_at >= start_time) or (n.updated_at >= start_time)
+                n
+                for n in nodes
+                if (n.created_at >= start_time)
+                or (n.published_at >= start_time)
+                or (n.updated_at >= start_time)
             ]
 
             tweetable_times = []
             for node in tweetable_nodes:
-                tweetable_times.extend([node.created_at, node.updated_at, node.published_at])
+                tweetable_times.extend(
+                    [node.created_at, node.updated_at, node.published_at]
+                )
 
             new_nodes = []
 
