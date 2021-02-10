@@ -15,6 +15,9 @@ import time
 import twitter
 import xmltodict
 import json
+import http
+
+DELAY = 60 * 60
 
 
 TIMEZONE = timezone("EST")
@@ -43,7 +46,7 @@ def get_nodes(start_time: datetime) -> List[Box]:
 
     node_list = Box(
         xmltodict.parse(
-            Entrez.esearch("taxonomy", term, retmax=100, email="austin@onecodex.com").read()
+            Entrez.esearch("taxonomy", term, retmax=100, email="harekrishna@gmail.com").read()
         )
     )
 
@@ -79,6 +82,7 @@ def get_nodes(start_time: datetime) -> List[Box]:
                         "lineage": node.Lineage,
                 })
             )
+
         return retval
 
 
@@ -176,7 +180,15 @@ def main():
     print(f"start time: {start_time}")
 
     while True:
-        nodes = [ n for n in get_nodes(start_time) if 'sp.' not in n.name ]
+        try:
+            all_nodes = get_nodes(start_time)
+        except http.client.RemoteDisconnected as e:
+            print(f"Caught {e}. Trying again")
+            time.sleep(DELAY)
+            continue
+
+        # skip sp. nodes?
+        nodes = [ n for n in all_nodes if 'sp.' not in n.name ]
 
         for node in nodes:
             print(str(node.created_at))
@@ -207,7 +219,7 @@ def main():
 
             start_time = datetime.now(TIMEZONE)
 
-        time.sleep(3600)
+        time.sleep(DELAY)
 
 
 if __name__ == "__main__":
