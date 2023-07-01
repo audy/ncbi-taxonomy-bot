@@ -3,24 +3,29 @@
 from Bio import Entrez
 from box import Box
 from datetime import datetime
+from retry import retry
 from dateutil.parser import parse as parse_date
 from pprint import pprint
 from typing import List
+import urllib
 from pytz import timezone
 import argparse
 import json
 import os
 import random
 import time
-import twitter
+
 import xmltodict
 import json
 import http
 
-DELAY = 60 * 60
+from mastodon import Mastodon
+
+DELAY = 60 * 60 # 1 minute
 
 
 TIMEZONE = timezone("EST")
+START_TIME_PATH = "start-time.txt"
 
 
 def parse_start_time(start_time_string):
@@ -37,6 +42,7 @@ def parse_args():
     return parser.parse_args()
 
 
+@retry(delay=50, tries=5)
 def get_nodes(start_time: datetime) -> List[Box]:
     """
     Returns a list of nodes that have been created/updated/published after a
@@ -55,10 +61,13 @@ def get_nodes(start_time: datetime) -> List[Box]:
         )
     )
 
-    if node_list.eSearchResult.IdList is None:
+    # sometimes NCBI randomly returns None for eSearchResult. In that case,
+    # just return an empty array and try again later...
+    if node_list.eSearchResult is None or node_list.eSearchResult.IdList is None:
         return []
     else:
         tax_ids = node_list.eSearchResult.IdList.Id
+
         response_data = xmltodict.parse(
             Entrez.efetch(
                 db="taxonomy", id=",".join(tax_ids), email="harekrishna@gmail.com"
@@ -134,32 +143,24 @@ def format_tweet_for_node(node, start_time) -> str:
     return "\n".join([f"{action}! {node.name} ({node.rank})", url])
 
 
-def get_twitter():
-    api = twitter.Api(
-        consumer_key=os.getenv("TWITTER_CONSUMER_KEY"),
-        consumer_secret=os.getenv("TWITTER_CONSUMER_SECRET"),
-        access_token_key=os.getenv("TWITTER_ACCESS_TOKEN_KEY"),
-        access_token_secret=os.getenv("TWITTER_ACCESS_TOKEN_SECRET"),
+def get_mastodon():
+    return Mastodon(
+        client_id=os.environ['MASTODON_CLIENT_ID'],
+        client_secret=os.environ['MASTODON_CLIENT_SECRET'],
+        access_token=os.environ['MASTODON_ACCESS_TOKEN'],
+        api_base_url='https://genomic.social'
     )
-
-    return api
 
 
 def send_tweet(tweet_text, dry_run=True):
-    api = get_twitter()
+    api = get_mastodon()
     if dry_run:
         print(tweet_text)
     else:
-        print(f"tweeting!")
+        print(f"tooting!")
         print(tweet_text)
         print("\n")
-
-        try:
-            api.PostUpdate(tweet_text)
-        # probably due to tweeting the same thing twice ...
-        except twitter.error.TwitterError as e:
-            print(e)
-            return
+        api.toot(tweet_text)
 
 
 def tweet_nodes(nodes, start_time, dry_run=True, delay=60 * 15):
@@ -175,24 +176,37 @@ def tweet_nodes(nodes, start_time, dry_run=True, delay=60 * 15):
         if not dry_run:
             time.sleep(delay)
 
+def get_start_time():
+    if os.path.exists(START_TIME_PATH):
+        with open(START_TIME_PATH) as handle:
+            start_time = datetime.fromisoformat(handle.read().strip())
+    else:
+        start_time = datetime.now(TIMEZONE)
+
+    return start_time
+
+
+
 
 def main():
     args = parse_args()
-    # make sure we're logged in before starting anything
-    api = get_twitter()
-    api.VerifyCredentials()
+    api = get_mastodon()
 
     if args.start_time is None:
-        start_time = datetime.now(TIMEZONE)
+        start_time = get_start_time()
     else:
         start_time = args.start_time
 
+    with open(START_TIME_PATH, 'w') as handle:
+        handle.write(str(start_time))
+
     print(f"start time: {start_time}")
+
 
     while True:
         try:
             all_nodes = get_nodes(start_time)
-        except http.client.RemoteDisconnected as e:
+        except Exception as e:
             print(f"Caught {e}. Trying again")
             time.sleep(DELAY)
             continue
@@ -232,6 +246,7 @@ def main():
             # if something goes wrong, it will not duplicate tweets
             tweet_nodes(tweetable_nodes, start_time, dry_run=False)
 
+            # TODO: serialize state to JSON?
             start_time = datetime.now(TIMEZONE)
 
         time.sleep(DELAY)

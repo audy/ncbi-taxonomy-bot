@@ -1,6 +1,7 @@
 BioPython
 python-box
 xmltodict
-python-twitter
+Mastodon.py
 python-dateutil
 pytz
+retry
