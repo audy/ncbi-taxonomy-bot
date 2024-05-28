@@ -211,6 +211,8 @@ def main():
             time.sleep(DELAY)
             continue
 
+        start_time = datetime.now(TIMEZONE)
+
         # skip sp. nodes?
         nodes = [ n for n in all_nodes if 'sp.' not in n.name ]
 
@@ -245,9 +247,6 @@ def main():
             # this will rate limit
             # if something goes wrong, it will not duplicate tweets
             tweet_nodes(tweetable_nodes, start_time, dry_run=False)
-
-            # TODO: serialize state to JSON?
-            start_time = datetime.now(TIMEZONE)
 
         time.sleep(DELAY)
 
