@@ -15,7 +15,7 @@ import xmltodict
 
 from mastodon import Mastodon
 
-DELAY = 60 * 60  # 1 minute
+DELAY_SECONDS = 60 * 60  # 1 hour
 
 
 TIMEZONE = timezone("EST")
@@ -193,7 +193,7 @@ def main():
             all_nodes = get_nodes(start_time)
         except Exception as e:
             print(f"Caught {e}. Trying again")
-            time.sleep(DELAY)
+            time.sleep(DELAY_SECONDS)
             continue
 
         start_time = datetime.now(TIMEZONE)
@@ -224,7 +224,7 @@ def main():
             # if something goes wrong, it will not duplicate tweets
             tweet_nodes(tweetable_nodes, start_time, dry_run=False)
 
-        time.sleep(DELAY)
+        time.sleep(DELAY_SECONDS)
 
 
 if __name__ == "__main__":
