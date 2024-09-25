@@ -5,23 +5,17 @@ from box import Box
 from datetime import datetime
 from retry import retry
 from dateutil.parser import parse as parse_date
-from pprint import pprint
 from typing import List
-import urllib
 from pytz import timezone
 import argparse
-import json
 import os
-import random
 import time
 
 import xmltodict
-import json
-import http
 
 from mastodon import Mastodon
 
-DELAY = 60 * 60 # 1 minute
+DELAY = 60 * 60  # 1 minute
 
 
 TIMEZONE = timezone("EST")
@@ -55,9 +49,7 @@ def get_nodes(start_time: datetime) -> List[Box]:
 
     node_list = Box(
         xmltodict.parse(
-            Entrez.esearch(
-                "taxonomy", term, retmax=100, email="harekrishna@gmail.com"
-            ).read()
+            Entrez.esearch("taxonomy", term, retmax=100, email="harekrishna@gmail.com").read()
         )
     )
 
@@ -69,9 +61,7 @@ def get_nodes(start_time: datetime) -> List[Box]:
         tax_ids = node_list.eSearchResult.IdList.Id
 
         response_data = xmltodict.parse(
-            Entrez.efetch(
-                db="taxonomy", id=",".join(tax_ids), email="harekrishna@gmail.com"
-            ).read()
+            Entrez.efetch(db="taxonomy", id=",".join(tax_ids), email="harekrishna@gmail.com").read()
         )
 
         nodes = Box(response_data)
@@ -90,12 +80,8 @@ def get_nodes(start_time: datetime) -> List[Box]:
                         "id": node.TaxId,
                         "name": node.ScientificName,
                         "rank": node.Rank,
-                        "created_at": parse_date(node.CreateDate).replace(
-                            tzinfo=TIMEZONE
-                        ),
-                        "updated_at": parse_date(node.UpdateDate).replace(
-                            tzinfo=TIMEZONE
-                        ),
+                        "created_at": parse_date(node.CreateDate).replace(tzinfo=TIMEZONE),
+                        "updated_at": parse_date(node.UpdateDate).replace(tzinfo=TIMEZONE),
                         "published_at": pub_date,
                         "lineage": node.Lineage,
                     }
@@ -145,10 +131,10 @@ def format_tweet_for_node(node, start_time) -> str:
 
 def get_mastodon():
     return Mastodon(
-        client_id=os.environ['MASTODON_CLIENT_ID'],
-        client_secret=os.environ['MASTODON_CLIENT_SECRET'],
-        access_token=os.environ['MASTODON_ACCESS_TOKEN'],
-        api_base_url='https://genomic.social'
+        client_id=os.environ["MASTODON_CLIENT_ID"],
+        client_secret=os.environ["MASTODON_CLIENT_SECRET"],
+        access_token=os.environ["MASTODON_ACCESS_TOKEN"],
+        api_base_url="https://genomic.social",
     )
 
 
@@ -157,7 +143,7 @@ def send_tweet(tweet_text, dry_run=True):
     if dry_run:
         print(tweet_text)
     else:
-        print(f"tooting!")
+        print("tooting!")
         print(tweet_text)
         print("\n")
         api.toot(tweet_text)
@@ -176,6 +162,7 @@ def tweet_nodes(nodes, start_time, dry_run=True, delay=60 * 15):
         if not dry_run:
             time.sleep(delay)
 
+
 def get_start_time():
     if os.path.exists(START_TIME_PATH):
         with open(START_TIME_PATH) as handle:
@@ -183,25 +170,23 @@ def get_start_time():
     else:
         start_time = datetime.now(TIMEZONE)
 
+    start_time = datetime.fromisoformat("2024-09-10")
+
     return start_time
-
-
 
 
 def main():
     args = parse_args()
-    api = get_mastodon()
 
-    if args.start_time is None:
-        start_time = get_start_time()
-    else:
-        start_time = args.start_time
+    # verify config is set
+    # get_mastodon()
 
-    with open(START_TIME_PATH, 'w') as handle:
+    start_time = args.start_time or get_start_time()
+
+    with open(START_TIME_PATH, "w") as handle:
         handle.write(str(start_time))
 
     print(f"start time: {start_time}")
-
 
     while True:
         try:
@@ -214,19 +199,16 @@ def main():
         start_time = datetime.now(TIMEZONE)
 
         # skip sp. nodes?
-        nodes = [ n for n in all_nodes if 'sp.' not in n.name ]
+        nodes = [n for n in all_nodes if "sp." not in n.name]
 
+        print(f"start_time={start_time}")
         for node in nodes:
-            print(str(node.created_at))
+            print(node)
 
         if len(nodes) == 0:
             print(f"no nodes... I sleep (start_time={start_time})")
         else:
             print(f"{len(nodes)} nodes fetch from NCBI (since={start_time})")
-
-            times = []
-            for node in nodes:
-                times.extend([node.created_at, node.updated_at, node.published_at])
 
             tweetable_nodes = [
                 n
@@ -236,13 +218,7 @@ def main():
                 or (n.updated_at >= start_time)
             ]
 
-            tweetable_times = []
-            for node in tweetable_nodes:
-                tweetable_times.extend(
-                    [node.created_at, node.updated_at, node.published_at]
-                )
-
-            new_nodes = []
+            print(f"{len(tweetable_nodes)=:,}")
 
             # this will rate limit
             # if something goes wrong, it will not duplicate tweets
