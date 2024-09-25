@@ -26,7 +26,6 @@ def parse_start_time(start_time_string):
     start_time = datetime.fromisoformat(start_time_string)
     assert start_time.tzinfo is not None
     start_time.replace(tzinfo=TIMEZONE)
-    print(start_time)
     return start_time
 
 
@@ -169,8 +168,6 @@ def get_start_time():
             start_time = datetime.fromisoformat(handle.read().strip())
     else:
         start_time = datetime.now(TIMEZONE)
-
-    start_time = datetime.fromisoformat("2024-09-10")
 
     return start_time
 
