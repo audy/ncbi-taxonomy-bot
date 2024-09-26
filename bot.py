@@ -42,6 +42,8 @@ def get_nodes(start_time: datetime) -> List[Box]:
     specified date
     """
 
+    print(f"--- fetching nodes since {start_time}")
+
     # I haven't been able to figure out how to query by hour so we have to
     # parse the times and filter manually. No biggie.
     term = f'"{start_time.strftime("%Y/%m/%d")}"[EDAT] : "3000"[EDAT]'
@@ -173,10 +175,11 @@ def get_start_time():
 
 
 def main():
+    print("--- starting")
     args = parse_args()
 
     # verify config is set
-    # get_mastodon()
+    get_mastodon()
 
     start_time = args.start_time or get_start_time()
 
