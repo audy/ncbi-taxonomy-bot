@@ -50,7 +50,7 @@ def get_nodes(start_time: datetime) -> List[Box]:
 
     node_list = Box(
         xmltodict.parse(
-            Entrez.esearch("taxonomy", term, retmax=100, email="harekrishna@gmail.com").read()
+            Entrez.esearch("taxonomy", term, retmax=100, email="accounts@agdr.org").read()
         )
     )
 
