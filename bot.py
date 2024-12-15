@@ -199,6 +199,9 @@ def main():
         # skip sp. nodes?
         nodes = [n for n in all_nodes if "sp." not in n.name]
 
+        # skip `strain`, `no rank`
+        nodes = [n for n in nodes if n.rank not in {"strain", "no rank"}]
+
         print(f"start_time={start_time}")
         for node in nodes:
             print(node)
